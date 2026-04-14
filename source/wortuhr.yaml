@@ -3,13 +3,11 @@ esphome:
   friendly_name: Wortuhr
   includes:
     - lock.h
-  libraries:
-    - fastled/FastLED
 
 esp32:
   board: esp32dev
   framework:
-    type: arduino
+    type: esp-idf
 
 logger:
 api:
