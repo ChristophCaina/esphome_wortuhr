@@ -2,7 +2,7 @@ esphome:
   name: wortuhr
   friendly_name: Wortuhr
   includes:
-    - wortuhr_clock.h
+    - lock.h
   libraries:
     - fastled/FastLED
 
