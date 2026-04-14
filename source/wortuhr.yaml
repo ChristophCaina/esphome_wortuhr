@@ -1,0 +1,155 @@
+esphome:
+  name: wortuhr
+  friendly_name: Wortuhr
+  includes:
+    - wortuhr_clock.h
+  libraries:
+    - fastled/FastLED
+
+esp32:
+  board: esp32dev
+  framework:
+    type: arduino
+
+logger:
+api:
+ota:
+  password: "dein_ota_passwort"
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  ap:
+    ssid: "WORTUHR-SETUP"
+    password: ""
+
+captive_portal:
+
+web_server:
+  port: 80
+
+# ── Zeit ──────────────────────────────────────────────────
+i2c:
+  sda: GPIO21
+  scl: GPIO22
+
+time:
+  - platform: ds1307    # DS3231 ist kompatibel
+    id: rtc_time
+    update_interval: never
+  - platform: homeassistant
+    id: ha_time
+    on_time_sync:
+      then:
+        - ds1307.write_time   # RTC bei jeder HA-Sync aktualisieren
+        - logger.log: "RTC updated from Home Assistant"
+
+# ── LED-Streifen ───────────────────────────────────────────
+light:
+  - platform: neopixelbus
+    type: GRB
+    variant: WS2812
+    pin: GPIO5
+    num_leds: 114
+    name: "Wortuhr LEDs"
+    id: led_strip
+    restore_mode: ALWAYS_OFF
+    effects:
+      - addressable_lambda:
+          name: "Wortuhr"
+          update_interval: 5s
+          lambda: |-
+            auto t = id(ha_time).now();
+            if (!t.is_valid()) t = id(rtc_time).now();
+            WordClock::update(it, t.hour, t.minute,
+                              id(word_color_r).state,
+                              id(word_color_g).state,
+                              id(word_color_b).state,
+                              id(day_brightness).state,
+                              id(night_brightness).state,
+                              id(night_start).state,
+                              id(night_end).state,
+                              id(dialect_mode).state);
+
+# ── Einstellungen als HA-Entities ─────────────────────────
+number:
+  - platform: template
+    name: "Helligkeit Tag (%)"
+    id: day_brightness
+    min_value: 0
+    max_value: 100
+    step: 1
+    initial_value: 80
+    restore_value: true
+    optimistic: true
+
+  - platform: template
+    name: "Helligkeit Nacht (%)"
+    id: night_brightness
+    min_value: 0
+    max_value: 100
+    step: 1
+    initial_value: 20
+    restore_value: true
+    optimistic: true
+
+  - platform: template
+    name: "Nacht Start (Stunde)"
+    id: night_start
+    min_value: 0
+    max_value: 23
+    step: 1
+    initial_value: 22
+    restore_value: true
+    optimistic: true
+
+  - platform: template
+    name: "Nacht Ende (Stunde)"
+    id: night_end
+    min_value: 0
+    max_value: 23
+    step: 1
+    initial_value: 6
+    restore_value: true
+    optimistic: true
+
+  - platform: template
+    name: "Farbe Rot"
+    id: word_color_r
+    min_value: 0
+    max_value: 255
+    step: 1
+    initial_value: 255
+    restore_value: true
+    optimistic: true
+
+  - platform: template
+    name: "Farbe Grün"
+    id: word_color_g
+    min_value: 0
+    max_value: 255
+    step: 1
+    initial_value: 225
+    restore_value: true
+    optimistic: true
+
+  - platform: template
+    name: "Farbe Blau"
+    id: word_color_b
+    min_value: 0
+    max_value: 255
+    step: 1
+    initial_value: 200
+    restore_value: true
+    optimistic: true
+
+select:
+  - platform: template
+    name: "Dialekt"
+    id: dialect_mode
+    options:
+      - "West"
+      - "Ost"
+    initial_option: "West"
+    restore_value: true
+    optimistic: true
